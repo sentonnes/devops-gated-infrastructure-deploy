@@ -15,10 +15,12 @@
     type: string
   - name: TerraformArtifact
     type: string
-  - name: VariablesTemplateRelativePath
-    type: string
+  - name: JobsVariableMappings
+    type: object
+    default: { }
   - name: TerraformVariableMappings
     type: object
+    default: { }
   - name: TerraformOutputVariables
     type: object
     default: { }
@@ -32,8 +34,16 @@ jobs:
     container: ${{parameters.TerraformContainer}}
     workspace:
       clean: all
+    # In order for normal variables to co-exist with either/both group & template, they must be broken down into a - name: & value: pattern
+    # If done in the KEY/VALUE pairing then the group & template would be considered to be a name of a variable oppose to a variables template file or a variable group in AzDO
+    # https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/variables?view=azure-pipelines#examples-1
     variables:
-      - template: ${{variables['System.DefaultWorkingDirectory']}}${{parameters.VariablesTemplateRelativePath}}@self
+      - ${{ each JobsVariableMapping in parameters.JobsVariableMappings }}:
+          - ${{ if or(eq(JobsVariableMapping.Key, 'group'), eq(JobsVariableMapping.Key, 'template')) }}:
+              - ${{ JobsVariableMapping.Key }}: ${{ JobsVariableMapping.Value }}
+          - ${{ else }}:
+              - name: ${{ JobsVariableMapping.Key }}
+                value: ${{ JobsVariableMapping.Value }}
     environment: "${{parameters.AzDOEnvironmentName}}"
     strategy:
       runOnce:
@@ -88,8 +98,16 @@ jobs:
     environment: "${{parameters.AzDOEnvironmentName}}"
     workspace:
       clean: all
+    # In order for normal variables to co-exist with either/both group & template, they must be broken down into a - name: & value: pattern
+    # If done in the KEY/VALUE pairing then the group & template would be considered to be a name of a variable oppose to a variables template file or a variable group in AzDO
+    # https://learn.microsoft.com/en-us/azure/devops/pipelines/yaml-schema/variables?view=azure-pipelines#examples-1
     variables:
-      - template: ${{variables['System.DefaultWorkingDirectory']}}${{parameters.VariablesTemplateRelativePath}}@self
+      - ${{ each JobsVariableMapping in parameters.JobsVariableMappings }}:
+          - ${{ if or(eq(JobsVariableMapping.Key, 'group'), eq(JobsVariableMapping.Key, 'template')) }}:
+              - ${{ JobsVariableMapping.Key }}: ${{ JobsVariableMapping.Value }}
+          - ${{ else }}:
+              - name: ${{ JobsVariableMapping.Key }}
+                value: ${{ JobsVariableMapping.Value }}
     strategy:
       runOnce:
         deploy:
