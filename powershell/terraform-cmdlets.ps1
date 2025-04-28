@@ -24,7 +24,31 @@ function Terraform-Init {
     -backend-config="key=$TFStateBlobName"
 
   ThrowErrorIfCommandHadError -Activity $activity
+  
+  Fix-TerraformProviderPermissions
+
   Write-Output "Finished $activity"
+}
+
+function Fix-TerraformProviderPermissions {
+  # This function fixes "permission denied" errors when Terraform tries to run provider binaries inside Linux containers.
+  # In Linux, downloaded provider binaries may lose execute permissions. This ensures they are executable after 'terraform init'.
+
+  if ($IsLinux) {
+    $activity = "Fixing Terraform provider binary permissions on Linux"
+    Write-Output "Starting $activity"
+
+    # Find all terraform-provider-* files and set them as executable
+    Get-ChildItem -Path ".terraform/providers/" -Recurse -Filter "terraform-provider-*" | ForEach-Object {
+      $_.FullName | ForEach-Object { chmod +x $_ }
+    }
+
+    ThrowErrorIfCommandHadError -Activity $activity
+    Write-Output "Finished $activity"
+  }
+  else {
+    Write-Host "Not running on Linux - no permission fix needed."
+  }
 }
 
 function ThrowErrorIfCommandHadError {
